@@ -1,1 +1,4 @@
-implement VPG/REINFORCE algorithm
+REINFORCE algorithm
+- train it once on cartpole
+- implement batching
+- improve the training signal function
