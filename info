@@ -1,0 +1,14 @@
+REINFORCE algorithm:
+
+Q: what did i understand ?
+create a policy network
+which outputs actions
+use the policy to act in the environment
+and collect a trajectory
+increase the probability of actions which produce higher reward
+
+Q: how to do so ?
+i need to calculate policy gradient
+associate every action taken with its importance/impact/significance
+sum over the complete trajectory
+update the policy network using the policy gradient
