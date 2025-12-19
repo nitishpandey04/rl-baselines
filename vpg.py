@@ -42,16 +42,22 @@ optimizer = torch.optim.AdamW(policy.parameters())
 # training loop
 # batch size 1, using r_t as training signal
 steps = 100
+batch_size = 32
 for step in steps:
     # a single episode
-    state = env.reset()
-    cost = 0 # analogous to loss
-    while True:
-        action = policy(state) # sample action from policy
-        next_state, reward, terminated = env.step(action) # perform action in environment
-        cost += -action.log() * reward # add to cost
-        if terminated:
-            break
+    # collect `batch_size` episodes, update once
+    batch_cost = []
+    for batch_sno in range(batch_size):    
+        state = env.reset()
+        cost = 0 # analogous to loss
+        while True:
+            action = policy(state) # sample action from policy
+            next_state, reward, terminated = env.step(action) # perform action in environment
+            cost += -action.log() * reward # TODO: improve the cost evaluator
+            if terminated:
+                break
+        batch_cost.append(cost)
+    cost = torch.Tensor(batch_cost)
     optimizer.zero_grad()
     cost.backward()
     optimizer.step()
