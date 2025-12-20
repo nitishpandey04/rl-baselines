@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dataclasses import dataclass
+import gymnasium as gym
 
 
 # create a policy using function approximation
@@ -10,54 +11,47 @@ from dataclasses import dataclass
 # the current state of environment will be fed to the policy network
 # policy network will output an action
 
-@dataclass
-class TaskConfig:
-    n_observation: int = 128
-    n_hidden: int = 64
-    n_action: int = 10
-
 class Policy(nn.Module):
-    def __init__(self, cfg: TaskConfig) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(cfg.n_observation, cfg.n_hidden),
+            nn.Linear(4, 48),
             nn.ReLU(),
-            nn.Linear(cfg.n_hidden, cfg.n_hidden),
+            nn.Linear(48, 48),
             nn.ReLU(),
-            nn.Linear(cfg.n_hidden, cfg.n_action)
+            nn.Linear(48, 1),
+            nn.Sigmoid()
         )
-        self.head = nn.Softmax(dim=-1)
 
-    def forward(self, batch_obs: torch.Tensor) -> torch.Tensor:
-        logits = self.layers(batch_obs)
-        probs = self.head(logits)
-        action = torch.argmax(probs, dim=-1)
+    def forward(self, obs: torch.Tensor) -> torch.Tensor:
+        prob = self.layers(obs)
+        action = torch.round(prob)
         return action
 
 
-env = None # assume you have the environment
-policy = Policy(TaskConfig())
+device = "cuda"
+env = gym.make("CartPole-v1")
+print(env.action_space)
+
+policy = Policy().to(device)
 optimizer = torch.optim.AdamW(policy.parameters())
 
 # training loop
-# batch size 1, using r_t as training signal
-steps = 100
-batch_size = 32
-for step in steps:
+# batch size 1
+# using r_t as training signal
+steps = 1000
+for step in range(steps):
     # a single episode
-    # collect `batch_size` episodes, update once
-    batch_cost = []
-    for batch_sno in range(batch_size):    
-        state = env.reset()
-        cost = 0 # analogous to loss
-        while True:
-            action = policy(state) # sample action from policy
-            next_state, reward, terminated = env.step(action) # perform action in environment
-            cost += -action.log() * reward # TODO: improve the cost evaluator
-            if terminated:
-                break
-        batch_cost.append(cost)
-    cost = torch.Tensor(batch_cost)
+    observation, info = env.reset()
+    total_reward = torch.tensor([0.0], device=device) # analogous to loss
+    while True:
+        observation = torch.tensor(observation, device=device)
+        action = policy(observation) # sample action from policy
+        observation, reward, terminated, truncated, info = env.step(action) # perform action in environment
+        total_reward += reward * action.log() # TODO: improve the cost evaluator
+        if terminated or truncated:
+            break
     optimizer.zero_grad()
-    cost.backward()
+    total_reward.backward()
     optimizer.step()
+
