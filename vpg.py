@@ -28,7 +28,7 @@ optimizer = torch.optim.AdamW(policy.parameters(), lr=1e-2)
 
 # TODO: batching, loss normalization, discount factor
 steps = 500
-batch_size = 4
+batch_size = 32
 for step in range(steps):
     # sample an episode
 
@@ -64,6 +64,7 @@ for step in range(steps):
 
     # normalize rewards across batch
     rewards_batch = torch.tensor(rewards_batch, device=device)
+    max_reward_per_batch = rewards_batch.max()
     rewards_batch = (rewards_batch - rewards_batch.mean()) / (rewards_batch.std() + 1e-8)
 
     # compute loss
@@ -77,20 +78,27 @@ for step in range(steps):
     optimizer.step()
 
     if step % 1 == 0:
-        print(f"Episode {step} | Loss {loss:.5f} | Grad norm {grad_norm:.5f}")
+        print(f"Episode {step} | Loss {loss:.5f} | Grad norm {grad_norm:.5f} | Max reward per batch {max_reward_per_batch}")
 
 
-
+torch.save(policy.state_dict(), "agent.pt")
 
 
 # inference
 env = gym.make("CartPole-v1", render_mode="human")
 observation, info = env.reset()
+total_reward = 0
 while True:
-    obs = torch.as_tensor(device=device, dtype=torch.float32)
+    obs = torch.as_tensor(observation, device=device, dtype=torch.float32)
     logit = policy(obs)
     prob = F.sigmoid(logit)
-    action = torch.round()
+    action = torch.round(prob).to(torch.int32).item()
+    observation, reward, terminated, truncated, info = env.step(action)
+    total_reward += reward
+    if terminated or truncated:
+        break
+env.close()
+
 
 
 

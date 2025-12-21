@@ -12,3 +12,15 @@ i need to calculate policy gradient
 associate every action taken with its importance/impact/significance
 sum over the complete trajectory
 update the policy network using the policy gradient
+
+
+
+
+
+
+
+
+step wise rewards
+rewards to go
+batching
+batch normalization
