@@ -47,20 +47,21 @@ for step in range(steps):
         next_observation, reward, terminated, truncated, info = env.step(action.to(torch.int32).item())
         all_log_probs.append(log_prob)
         all_rewards.append(reward)
-
+        
         if terminated or truncated:
             break
             
     # Q2
     cost_value = 0
+    total_reward = sum(all_rewards)
     for i, log_prob in enumerate(all_log_probs):
-        cost_value += -log_prob * all_rewards[i]
+        cost_value += -log_prob * total_reward
     optimizer.zero_grad()
     cost_value.backward()
     optimizer.step()
 
     if step % 50 == 0:
-        print(f"Episode {step + 1} | Total reward {cost_value.item():.2f}")
+        print(f"Episode {step + 1} | Total reward {total_reward:.2f}")
 
 
 
