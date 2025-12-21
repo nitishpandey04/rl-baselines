@@ -1,7 +1,7 @@
+from torch.distributions import Bernoulli
 import gymnasium as gym
 import torch.nn as nn
 import torch
-from torch.distributions import Bernoulli
 
 
 class Policy(nn.Module):
@@ -13,7 +13,6 @@ class Policy(nn.Module):
             nn.Linear(48, 48),
             nn.ReLU(),
             nn.Linear(48, 1),
-            nn.ReLU(),
             nn.Sigmoid()
         )
 
@@ -28,7 +27,8 @@ policy = Policy().to(device)
 optimizer = torch.optim.AdamW(policy.parameters(), lr=1e-2)
 
 
-steps = 500
+# add total-reward, rewards-to-go, discount factor
+steps = 5000
 for step in range(steps):
     # sample an episode
     observation, info = env.reset()
@@ -44,21 +44,23 @@ for step in range(steps):
         action = dist.sample()
         log_prob = dist.log_prob(action)
 
-        next_observation, reward, terminated, truncated, info = env.step(action)
+        next_observation, reward, terminated, truncated, info = env.step(action.to(torch.int32).item())
         all_log_probs.append(log_prob)
         all_rewards.append(reward)
 
         if terminated or truncated:
             break
-
+            
     # Q2
-    cost_value = 0.0
+    cost_value = 0
     for i, log_prob in enumerate(all_log_probs):
-        cost_value += log_prob * all_rewards[i]
-    cost_value = torch.as_tensor(cost_value, dtype=torch.float32, device=device)
+        cost_value += -log_prob * all_rewards[i]
     optimizer.zero_grad()
     cost_value.backward()
     optimizer.step()
+
+    if step % 50 == 0:
+        print(f"Episode {step + 1} | Total reward {cost_value.item():.2f}")
 
 
 
