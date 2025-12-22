@@ -10,4 +10,4 @@ This repo uses `uv` package manager. Just clone the repo, and run `uv sync` comm
 Run `python vpg.py` to train agent on gymnasium's `CartPole-v1` environment, using REINFORCE.<br><br>
 
 `CartPole-v1` agent trained using REINFORCE:
-[Click to play video](./agent_vide/rl-video-episode-0.mp4)
+[Click to play video](./agent_video/rl-video-episode-0.mp4)
