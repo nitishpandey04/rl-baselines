@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
 import gymnasium as gym
+from gymnasium.wrappers import RecordVideo
+
 
 class Policy(nn.Module):
     def __init__(self, n_observations, n_actions):
@@ -18,8 +20,9 @@ class Policy(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
+
 class ReinforceTrainer:
-    def __init__(self, env_id="CartPole-v1", steps=25, batch_size=32, gamma=0.99, device="cuda"):
+    def __init__(self, env_id="CartPole-v1", steps=30, batch_size=32, gamma=0.99, device="cuda"):
         self.device = device
         self.gamma = gamma
         self.steps = steps
@@ -99,6 +102,20 @@ class ReinforceTrainer:
             done = terminated or truncated
         env.close()
 
+    def record(self, video_folder="./agent_video"):
+        env = gym.make(self.env.spec.id, render_mode="rgb_array")
+        env = RecordVideo(env, video_folder=video_folder)
+        obs, _ = env.reset()
+        done = False
+        while not done:
+            state = torch.as_tensor(obs, dtype=torch.float32, device=self.device)
+            with torch.no_grad():
+                logits = self.policy(state)
+                action = torch.argmax(logits).item() # greedy
+            obs, _, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
+        env.close()
+
     def save_policy(self, checkpoint_path="agent.pt"):
         torch.save(self.policy.state_dict(), checkpoint_path)
 
@@ -111,5 +128,6 @@ class ReinforceTrainer:
 trainer = ReinforceTrainer(env_id="CartPole-v1")
 trainer.play()
 trainer.train()
-trainer.save_policy()
+trainer.save_policy() # (checkpoint_path="acrobot_agent.pt")
 trainer.play()
+trainer.record()
