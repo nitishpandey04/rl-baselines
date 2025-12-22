@@ -1,115 +1,102 @@
-from torch.distributions import Bernoulli
-import torch.nn.functional as F
-import gymnasium as gym
-import torch.nn as nn
-import random
 import torch
-
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.distributions import Categorical
+import gymnasium as gym
 
 class Policy(nn.Module):
-    def __init__(self,):
+    def __init__(self, n_observations, n_actions):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(4, 64),
+            nn.Linear(n_observations, 64),
             nn.ReLU(),
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(64, 1)
+            nn.Linear(64, n_actions)
         )
 
-    def forward(self, obs: torch.Tensor) -> torch.Tensor:
-        logits = self.layers(obs)
-        return logits
-
+    def forward(self, x):
+        return self.layers(x)
 
 class ReinforceTrainer:
-    def __init__(self, steps: int=30, batch_size: int=32, device: str="cuda"):
+    def __init__(self, env_id="CartPole-v1", steps=25, batch_size=32, gamma=0.99, device="cuda"):
+        self.device = device
+        self.gamma = gamma
         self.steps = steps
         self.batch_size = batch_size
-        self.device = device
-        self.policy = Policy().to(device)
+        
+        self.env = gym.make(env_id)
+        n_obs = self.env.observation_space.shape[0]
+        n_acts = self.env.action_space.n
+        
+        self.policy = Policy(n_obs, n_acts).to(device)
         self.optimizer = torch.optim.AdamW(self.policy.parameters(), lr=1e-2)
-        self.env = gym.make("CartPole-v1", render_mode="rgb_array")
 
     def train(self):
         for step in range(self.steps):
-            # sample an episode
             log_probs_batch = []
-            rewards_batch = []
+            returns_batch = []
+            episode_rewards = []
 
-            for i in range(self.batch_size):
-                observation, info = self.env.reset()
-                
+            for _ in range(self.batch_size):
+                observation, _ = self.env.reset()
                 log_probs = []
                 rewards = []
-                while True:
-                    obs = torch.as_tensor(observation, dtype=torch.float32, device=self.device)
-                    logits = self.policy(obs)
-                    probs = F.sigmoid(logits)
+                
+                done = False
+                while not done:
+                    state = torch.as_tensor(observation, dtype=torch.float32, device=self.device)
+                    logits = self.policy(state)
 
-                    # Method 1: using Bernoulli distribution to sample action and obtain log_prob
-                    # this is numerically more stable as they say
-
-                    # dist = Bernoulli(probs)
-                    # action = dist.sample()
-                    # log_prob = dist.log_prob(action)
-                    # action = action.to(torch.int32).item()
+                    # sample action and get log_prob
+                    dist = Categorical(logits=logits)
+                    action = dist.sample()
+                    log_prob = dist.log_prob(action)
                     
-                    # Method 2: manually compute action from probs = F.sigmoid(logits), and calculate log_prob of obtained action
-                    # numerically less stable because if the prob is 0.0, log(0) is -inf
-
-                    rand_num = random.random()
-                    action = 1 if rand_num < probs.item() else 0
-                    log_prob = probs.log() if action == 1 else (1 - probs).log()
-
-                    observation, reward, terminated, truncated, info = self.env.step(action)
+                    observation, reward, terminated, truncated, _ = self.env.step(action.item())
+                    
                     log_probs.append(log_prob)
                     rewards.append(reward)
+                    done = terminated or truncated
 
-                    if terminated or truncated:
-                        break
-
-                # compute rewards-to-go. TODO: add discount factor 
-                for i in range(len(rewards) - 2, -1, -1):
-                    rewards[i] += rewards[i + 1]
-
+                # discounted rewards-to-go
+                G = 0
+                returns = []
+                for r in reversed(rewards):
+                    G = r + self.gamma * G
+                    returns.insert(0, G)
+                    
                 log_probs_batch.extend(log_probs)
-                rewards_batch.extend(rewards)
+                returns_batch.extend(returns)
+                episode_rewards.append(sum(rewards))
 
-            # normalize rewards across batch 
-            rewards_batch = torch.tensor(rewards_batch, device=self.device)
-            max_reward_per_batch = rewards_batch.max()
-            rewards_batch = (rewards_batch - rewards_batch.mean()) / (rewards_batch.std() + 1e-8)
+            # batch normalization
+            returns_tensor = torch.tensor(returns_batch, device=self.device)
+            returns_tensor = (returns_tensor - returns_tensor.mean()) / (returns_tensor.std() + 1e-8)
 
-            # compute loss
-            log_probs_tensor = torch.stack(log_probs_batch).view(-1)
-            loss = -(log_probs_tensor * rewards_batch).sum()
+            # calculate loss
+            log_probs_tensor = torch.stack(log_probs_batch)
+            loss = -(log_probs_tensor * returns_tensor).mean()
 
-            # update policy
             self.optimizer.zero_grad()
             loss.backward()
-            grad_norm = torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 1.0)
             self.optimizer.step()
 
-            if step % 1 == 0:
-                print(f"Episode {step} | Loss {loss:.5f} | Grad norm {grad_norm:.5f} | Max reward per batch {max_reward_per_batch}")
-
-        self.save_policy()
-
+            avg_reward = sum(episode_rewards) / self.batch_size
+            print(f"Step {step} | Avg Reward: {avg_reward:.2f} | Loss: {loss.item():.4f}")
+            
     def play(self):
-        # inference policy
-        env = gym.make("CartPole-v1", render_mode="human")
-        observation, info = env.reset()
-        total_reward = 0
-        while True:
-            obs = torch.as_tensor(observation, device=self.device, dtype=torch.float32)
-            logit = self.policy(obs)
-            prob = F.sigmoid(logit)
-            action = torch.round(prob).to(torch.int32).item()
-            observation, reward, terminated, truncated, info = env.step(action)
-            total_reward += reward
-            if terminated or truncated:
-                break
+        env = gym.make(self.env.spec.id, render_mode="human")
+        obs, _ = env.reset()
+        done = False
+        while not done:
+            state = torch.as_tensor(obs, dtype=torch.float32, device=self.device)
+            with torch.no_grad():
+                logits = self.policy(state)
+                action = torch.argmax(logits).item() # greedy
+            obs, _, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
         env.close()
 
     def save_policy(self, checkpoint_path="agent.pt"):
@@ -120,12 +107,9 @@ class ReinforceTrainer:
         self.policy.load_state_dict(state_dict)
 
 
-trainer = ReinforceTrainer()
-
-# trainer.train()
-
-# before training
+# usage
+trainer = ReinforceTrainer(env_id="CartPole-v1")
 trainer.play()
-trainer.load_policy()
-# after training
+trainer.train()
+trainer.save_policy()
 trainer.play()
