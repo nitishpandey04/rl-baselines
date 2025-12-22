@@ -128,6 +128,6 @@ class ReinforceTrainer:
 trainer = ReinforceTrainer(env_id="CartPole-v1")
 trainer.play()
 trainer.train()
-trainer.save_policy() # (checkpoint_path="acrobot_agent.pt")
+trainer.save_policy()
 trainer.play()
 trainer.record()
