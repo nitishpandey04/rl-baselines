@@ -48,6 +48,7 @@ class ReinforceTrainer:
                     probs = F.sigmoid(logits)
 
                     # Method 1: using Bernoulli distribution to sample action and obtain log_prob
+                    # this is numerically more stable as they say
 
                     # dist = Bernoulli(probs)
                     # action = dist.sample()
@@ -55,6 +56,7 @@ class ReinforceTrainer:
                     # action = action.to(torch.int32).item()
                     
                     # Method 2: manually compute action from probs = F.sigmoid(logits), and calculate log_prob of obtained action
+                    # numerically less stable because if the prob is 0.0, log(0) is -inf
 
                     rand_num = random.random()
                     action = 1 if rand_num < probs.item() else 0
@@ -65,10 +67,6 @@ class ReinforceTrainer:
                     rewards.append(reward)
 
                     if terminated or truncated:
-                        # print(f"{probs=}")
-                        # print(f"{rand_num=}")
-                        # print(f"{action=}")
-                        # print(f"{log_prob=}")
                         break
 
                 # compute rewards-to-go. TODO: add discount factor 
@@ -114,10 +112,10 @@ class ReinforceTrainer:
                 break
         env.close()
 
-    def save_policy(self, checkpoint_path="agent2.pt"):
+    def save_policy(self, checkpoint_path="agent.pt"):
         torch.save(self.policy.state_dict(), checkpoint_path)
 
-    def load_policy(self, checkpoint_path="agent2.pt"):
+    def load_policy(self, checkpoint_path="agent.pt"):
         state_dict = torch.load(checkpoint_path, weights_only=True)
         self.policy.load_state_dict(state_dict)
 
