@@ -2,6 +2,7 @@ from torch.distributions import Bernoulli
 import torch.nn.functional as F
 import gymnasium as gym
 import torch.nn as nn
+import random
 import torch
 
 
@@ -44,29 +45,40 @@ class ReinforceTrainer:
                 while True:
                     obs = torch.as_tensor(observation, dtype=torch.float32, device=self.device)
                     logits = self.policy(obs)
+                    probs = F.sigmoid(logits)
 
-                    # bernoulli distribution because it makes sampling of log prob a differentiable operation
-                    # otherwise taking probability from sigmoid layer, doing log prob
-                    dist = Bernoulli(logits=logits)
-                    action = dist.sample()
-                    log_prob = dist.log_prob(action)
-                    action = action.to(torch.int32).item()
+                    # Method 1: using Bernoulli distribution to sample action and obtain log_prob
+
+                    # dist = Bernoulli(probs)
+                    # action = dist.sample()
+                    # log_prob = dist.log_prob(action)
+                    # action = action.to(torch.int32).item()
+                    
+                    # Method 2: manually compute action from probs = F.sigmoid(logits), and calculate log_prob of obtained action
+
+                    rand_num = random.random()
+                    action = 1 if rand_num < probs.item() else 0
+                    log_prob = probs.log() if action == 1 else (1 - probs).log()
 
                     observation, reward, terminated, truncated, info = self.env.step(action)
                     log_probs.append(log_prob)
                     rewards.append(reward)
 
                     if terminated or truncated:
+                        # print(f"{probs=}")
+                        # print(f"{rand_num=}")
+                        # print(f"{action=}")
+                        # print(f"{log_prob=}")
                         break
 
-                # compute rewards-to-go. TODO: add discount factor
+                # compute rewards-to-go. TODO: add discount factor 
                 for i in range(len(rewards) - 2, -1, -1):
                     rewards[i] += rewards[i + 1]
 
                 log_probs_batch.extend(log_probs)
                 rewards_batch.extend(rewards)
 
-            # normalize rewards across batch
+            # normalize rewards across batch 
             rewards_batch = torch.tensor(rewards_batch, device=self.device)
             max_reward_per_batch = rewards_batch.max()
             rewards_batch = (rewards_batch - rewards_batch.mean()) / (rewards_batch.std() + 1e-8)
@@ -102,13 +114,13 @@ class ReinforceTrainer:
                 break
         env.close()
 
-    def save_policy(self, checkpoint_path="agent.pt"):
+    def save_policy(self, checkpoint_path="agent2.pt"):
         torch.save(self.policy.state_dict(), checkpoint_path)
 
-    def load_policy(self, checkpoint_path="agent.pt"):
+    def load_policy(self, checkpoint_path="agent2.pt"):
         state_dict = torch.load(checkpoint_path, weights_only=True)
         self.policy.load_state_dict(state_dict)
-        
+
 
 trainer = ReinforceTrainer()
 
