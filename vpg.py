@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Categorical
+from torch.distributions import Categorical, Bernoulli
 import gymnasium as gym
 from gymnasium.wrappers import RecordVideo
 
@@ -29,10 +29,10 @@ class ReinforceTrainer:
         self.batch_size = batch_size
         
         self.env = gym.make(env_id)
-        n_obs = self.env.observation_space.shape[0]
-        n_acts = self.env.action_space.n
+        self.n_obs = self.env.observation_space.shape[0]
+        self.n_acts = self.env.action_space.n
         
-        self.policy = Policy(n_obs, n_acts).to(device)
+        self.policy = Policy(self.n_obs, self.n_acts).to(device)
         self.optimizer = torch.optim.AdamW(self.policy.parameters(), lr=1e-2)
 
     def train(self):
@@ -52,7 +52,10 @@ class ReinforceTrainer:
                     logits = self.policy(state)
 
                     # sample action and get log_prob
-                    dist = Categorical(logits=logits)
+                    if self.n_acts == 2:
+                        dist = Bernoulli(logits=logits)
+                    else:
+                        dist = Categorical(logits=logits)
                     action = dist.sample()
                     log_prob = dist.log_prob(action)
                     
