@@ -1,2 +1,5 @@
 REINFORCE algorithm
 - update advantage estimation from discounted rewards-to-go to value function based
+
+DQN algorithm
+- implement it, that's all.
