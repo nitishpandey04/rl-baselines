@@ -4,19 +4,6 @@ import torch.nn as nn
 import random
 import torch
 
-"""
-calculate an action value function parameterized by theta
-create a replay buffer of size N from which batch of transitions will be extracted
-pseudocode:
-for n episodes:
-  sample an episode using epsilon greedy policy, using the action value function parameterized by theta
-  insert that in replay buffer
-  sample a batch of transitions
-  obtain the target for each transition in the batch using fixed target policy
-  obtain the prediction of action value function for that timestep
-  update the value function approximation
-"""
-
 class ReplayBuffer:
     def __init__(self, size=100):
         self.size = size
@@ -31,4 +18,43 @@ class ReplayBuffer:
         batch = random.sample(self.buffer, batch_size)
         batch_tensor = torch.tensor(batch)
         return batch_tensor
+
+
+class Policy(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Conv2d(3, 16, 3, padding=1),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, 3, padding=1),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 3, padding=1),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Conv2d(64, 128, 3, padding=1),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Conv2d(128, 256, 3, padding=1),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Conv2d(256, 512, 3, padding=1),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(512 * 3 * 3, 10)
+        )
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return self.layers(inputs)
+
+
+policy = Policy().to("cuda")
+image = torch.randn((1, 3, 255, 255), device="cuda")
+print(image.shape)
+out = policy(image)
+print(out.shape)
+
+
 
