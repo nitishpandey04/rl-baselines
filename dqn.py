@@ -4,6 +4,7 @@ import torch.nn as nn
 import random
 import torch
 
+
 class ReplayBuffer:
     def __init__(self, size=100):
         self.size = size
@@ -42,19 +43,19 @@ class Policy(nn.Module):
             nn.Conv2d(256, 512, 3, padding=1),
             nn.MaxPool2d(2, 2),
             nn.ReLU(),
-            nn.Flatten(),
-            nn.Linear(512 * 3 * 3, 10)
+            nn.Flatten()
         )
+        self.head = nn.Linear(512 * 3 * 3 + 10, 1)
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        return self.layers(inputs)
-
-
-policy = Policy().to("cuda")
-image = torch.randn((1, 3, 255, 255), device="cuda")
-print(image.shape)
-out = policy(image)
-print(out.shape)
+    def forward(self, inputs: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
+        x = self.layers(inputs)
+        x = torch.concat([x, actions], dim=1) # concatenate sideways
+        out = self.head(x)
+        return out
 
 
-
+device = "cuda"
+policy = Policy().to(device)
+image = torch.randn((1, 3, 255, 255), device=device)
+action = F.one_hot(torch.tensor([1], dtype=torch.long, device=device), num_classes=10)
+out = policy(image, action)
