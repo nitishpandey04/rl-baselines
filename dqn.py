@@ -73,6 +73,18 @@ for ep in range(num_episodes):
             action = random.randint(0, env.action_space.n - 1)
         else:
             action = values.argmax() # take optimal action
-        reward = values[action] # fetch the value from the value function output
+            
+        # we have a state, i obtained the action value functions for that state
+        # we will select an action from the action values using epsilon greedy approach
+        # we will implement that action in the environment, obtain the reward and state
 
+        reward, next_state, terminated, truncated, info = env.step(action)
+        transition = (state, action, reward, next_state, terminated or truncated)
+        replay_buffer.insert(transition)
+        
+        transitions_batch = replay_buffer.sample()
+        # create the targets heres
+
+        # use the targets and the actual to estimate l2 loss
+        # perform gradient descent
         
