@@ -20,7 +20,7 @@ class ReplayBuffer:
         return batch_tensor
 
 
-class Policy(nn.Module):
+class QValueFunction(nn.Module):
     def __init__(self):
         super().__init__()
         self.layers = nn.Sequential(
@@ -49,12 +49,30 @@ class Policy(nn.Module):
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         return self.layers(inputs)
 
+# policy = Policy().to("cuda")
+# image = torch.randn((1, 3, 255, 255), device="cuda")
+# print(image.shape)
+# out = policy(image)
+# print(out.shape)
 
-policy = Policy().to("cuda")
-image = torch.randn((1, 3, 255, 255), device="cuda")
-print(image.shape)
-out = policy(image)
-print(out.shape)
+# take a replay buffer
+# take a q-value function
 
+env = None
+value_function = QValueFunction()
+replay_buffer = ReplayBuffer(size=1000)
+num_episodes = 100
+epsilon = 1e-5
+for ep in range(num_episodes):
+    state = env.reset()
+    done = False
+    while True:
+        values = value_function(state)
+        prob = random.random()
+        if prob < epsilon:
+            action = random.randint(0, env.action_space.n - 1)
+        else:
+            action = values.argmax() # take optimal action
+        reward = values[action] # fetch the value from the value function output
 
-
+        
