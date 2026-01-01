@@ -63,16 +63,17 @@ value_function = QValueFunction()
 replay_buffer = ReplayBuffer(size=1000)
 num_episodes = 100
 epsilon = 1e-5
+gamma = 1e-2
 for ep in range(num_episodes):
     state = env.reset()
     done = False
     while True:
-        values = value_function(state)
+        action_values = value_function(state)
         prob = random.random()
         if prob < epsilon:
             action = random.randint(0, env.action_space.n - 1)
         else:
-            action = values.argmax() # take optimal action
+            action = action_values.argmax() # take optimal action
             
         # we have a state, i obtained the action value functions for that state
         # we will select an action from the action values using epsilon greedy approach
@@ -82,9 +83,18 @@ for ep in range(num_episodes):
         transition = (state, action, reward, next_state, terminated or truncated)
         replay_buffer.insert(transition)
         
-        transitions_batch = replay_buffer.sample()
+        batch = replay_buffer.sample()
         # create the targets heres
+        targets = []
+        for transition in batch:
+            state, action, reward, next_state, done = transition
+            if not done:
+                with torch.no_grad():
+                    action_values = value_function(next_state)
+                    optimal_future_reward = action_values.max()
+                reward += gamma * optimal_future_reward
+            targets.append(reward)
+
 
         # use the targets and the actual to estimate l2 loss
         # perform gradient descent
-        
