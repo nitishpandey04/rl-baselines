@@ -1,9 +1,41 @@
 # rl-baselines
-Baseline implementations of popular RL algorithms in pytorch.
+Baseline implementations of popular RL algorithms in PyTorch.
+
+## Algorithms
+
+| Algorithm | Type | Action Space | Default Env |
+|-----------|------|--------------|-------------|
+| [VPG](vpg/vpg.py) (REINFORCE) | On-policy, policy gradient | Discrete | CartPole-v1 |
+| [DQN](dqn/dqn.py) | Off-policy, value-based | Discrete | — |
+| [DDPG](ddpg/ddpg.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
 
 ## Installation and setup
-This repo uses `uv` package manager. Just clone the repo, and run `uv sync` command inside the folder to setup the environment.
+This repo uses `uv`. Clone the repo and run:
 
-References:<br>
-https://spinningup.openai.com/en/latest/index.html<br>
-https://lilianweng.github.io/posts/2018-04-08-policy-gradient/
+```bash
+uv sync
+```
+
+## Usage
+
+**VPG (REINFORCE)**
+```python
+from vpg.vpg import ReinforceTrainer
+
+trainer = ReinforceTrainer(env_id="CartPole-v1")
+trainer.train()
+trainer.play()
+```
+
+**DDPG**
+```python
+from ddpg.ddpg import train, visualize
+
+agent, rewards = train(env_name="Pendulum-v1", max_episodes=200)
+visualize(agent)
+```
+
+## References
+- [Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/index.html)
+- [Policy Gradient Algorithms — Lilian Weng](https://lilianweng.github.io/posts/2018-04-08-policy-gradient/)
+- Lillicrap et al., [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971) (DDPG, 2015)
