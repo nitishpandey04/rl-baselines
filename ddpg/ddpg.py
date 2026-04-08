@@ -333,7 +333,7 @@ def train(
 # Entry point
 # ---------------------------------------------------------------------------
 
-def visualize(agent, env_name="Pendulum-v1", episodes=5):
+def play(agent, env_name="Pendulum-v1", episodes=5):
     env = gym.make(env_name, render_mode="human")
     
     for ep in range(1, episodes + 1):
@@ -379,4 +379,4 @@ if __name__ == "__main__":
     # agent.load("ddpg_pendulum.pt")
     # env.close()
 
-    visualize(agent)
+    play(agent)

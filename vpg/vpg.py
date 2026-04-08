@@ -1,136 +1,145 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.distributions import Categorical, Bernoulli
 import gymnasium as gym
 from gymnasium.wrappers import RecordVideo
 
 
 class Policy(nn.Module):
-    def __init__(self, n_observations, n_actions):
+    def __init__(self, state_dim, action_dim):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(n_observations, 64),
+            nn.Linear(state_dim, 64),
             nn.ReLU(),
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(64, n_actions)
+            nn.Linear(64, action_dim)
         )
 
     def forward(self, x):
         return self.layers(x)
 
 
-class ReinforceTrainer:
-    def __init__(self, env_id="CartPole-v1", steps=30, batch_size=32, gamma=0.99, device="cuda"):
-        self.device = device
+class VPGAgent:
+    def __init__(self, state_dim: int, action_dim: int, lr: float = 1e-2, gamma: float = 0.99, device: str = "cuda"):
         self.gamma = gamma
-        self.steps = steps
-        self.batch_size = batch_size
-        
-        self.env = gym.make(env_id)
-        self.n_obs = self.env.observation_space.shape[0]
-        self.n_acts = self.env.action_space.n
-        
-        self.policy = Policy(self.n_obs, self.n_acts).to(device)
-        self.optimizer = torch.optim.AdamW(self.policy.parameters(), lr=1e-2)
+        self.device = device
+        self.action_dim = action_dim
 
-    def train(self):
-        for step in range(self.steps):
-            log_probs_batch = []
-            returns_batch = []
-            episode_rewards = []
+        self.policy = Policy(state_dim, action_dim).to(device)
+        self.optimizer = torch.optim.AdamW(self.policy.parameters(), lr=lr)
 
-            for _ in range(self.batch_size):
-                observation, _ = self.env.reset()
-                log_probs = []
-                rewards = []
-                
-                done = False
-                while not done:
-                    state = torch.as_tensor(observation, dtype=torch.float32, device=self.device)
-                    logits = self.policy(state)
+    def select_action(self, state):
+        state_t = torch.as_tensor(state, dtype=torch.float32, device=self.device)
+        logits = self.policy(state_t)
 
-                    # sample action and get log_prob
-                    if self.n_acts == 2:
-                        dist = Bernoulli(logits=logits)
-                    else:
-                        dist = Categorical(logits=logits)
-                    action = dist.sample()
-                    log_prob = dist.log_prob(action)
-                    
-                    observation, reward, terminated, truncated, _ = self.env.step(action.item())
-                    
-                    log_probs.append(log_prob)
-                    rewards.append(reward)
-                    done = terminated or truncated
+        dist = Bernoulli(logits=logits) if self.action_dim == 2 else Categorical(logits=logits)
+        action = dist.sample()
+        return action.item(), dist.log_prob(action)
 
-                # discounted rewards-to-go
-                G = 0
-                returns = []
-                for r in reversed(rewards):
-                    G = r + self.gamma * G
-                    returns.insert(0, G)
-                    
-                log_probs_batch.extend(log_probs)
-                returns_batch.extend(returns)
-                episode_rewards.append(sum(rewards))
+    def update(self, log_probs: list, returns: list) -> float:
+        returns_t = torch.tensor(returns, device=self.device)
+        returns_t = (returns_t - returns_t.mean()) / (returns_t.std() + 1e-8)
 
-            # batch normalization
-            returns_tensor = torch.tensor(returns_batch, device=self.device)
-            returns_tensor = (returns_tensor - returns_tensor.mean()) / (returns_tensor.std() + 1e-8)
+        loss = -(torch.stack(log_probs) * returns_t).mean()
 
-            # calculate loss
-            log_probs_tensor = torch.stack(log_probs_batch)
-            loss = -(log_probs_tensor * returns_tensor).mean()
+        self.optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 1.0)
+        self.optimizer.step()
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 1.0)
-            self.optimizer.step()
+        return loss.item()
 
-            avg_reward = sum(episode_rewards) / self.batch_size
-            print(f"Step {step} | Avg Reward: {avg_reward:.2f} | Loss: {loss.item():.4f}")
-            
-    def play(self):
-        env = gym.make(self.env.spec.id, render_mode="human")
-        obs, _ = env.reset()
-        done = False
-        while not done:
-            state = torch.as_tensor(obs, dtype=torch.float32, device=self.device)
-            with torch.no_grad():
-                logits = self.policy(state)
-                action = torch.argmax(logits).item() # greedy
-            obs, _, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
-        env.close()
+    def save(self, path: str = "vpg_agent.pt"):
+        torch.save(self.policy.state_dict(), path)
 
-    def record(self, video_folder="./agent_video"):
-        env = gym.make(self.env.spec.id, render_mode="rgb_array")
-        env = RecordVideo(env, video_folder=video_folder)
-        obs, _ = env.reset()
-        done = False
-        while not done:
-            state = torch.as_tensor(obs, dtype=torch.float32, device=self.device)
-            with torch.no_grad():
-                logits = self.policy(state)
-                action = torch.argmax(logits).item() # greedy
-            obs, _, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
-        env.close()
-
-    def save_policy(self, checkpoint_path="agent.pt"):
-        torch.save(self.policy.state_dict(), checkpoint_path)
-
-    def load_policy(self, checkpoint_path="agent.pt"):
-        state_dict = torch.load(checkpoint_path, weights_only=True)
-        self.policy.load_state_dict(state_dict)
+    def load(self, path: str = "vpg_agent.pt"):
+        self.policy.load_state_dict(torch.load(path, weights_only=True))
 
 
-# usage
-trainer = ReinforceTrainer(env_id="CartPole-v1")
-trainer.play()
-trainer.train()
-trainer.save_policy()
-trainer.play()
-trainer.record()
+# ---------------------------------------------------------------------------
+# Training Loop
+# ---------------------------------------------------------------------------
+
+def train(
+    env_name: str = "CartPole-v1",
+    steps: int = 30,
+    batch_size: int = 32,
+    gamma: float = 0.99,
+    lr: float = 1e-2,
+    device: str = "cuda",
+) -> VPGAgent:
+    env = gym.make(env_name)
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.n
+
+    agent = VPGAgent(state_dim, action_dim, lr=lr, gamma=gamma, device=device)
+
+    for step in range(steps):
+        log_probs_batch, returns_batch, episode_rewards = [], [], []
+
+        for _ in range(batch_size):
+            obs, _ = env.reset()
+            log_probs, rewards = [], []
+            done = False
+
+            while not done:
+                action, log_prob = agent.select_action(obs)
+                obs, reward, terminated, truncated, _ = env.step(action)
+                log_probs.append(log_prob)
+                rewards.append(reward)
+                done = terminated or truncated
+
+            G = 0
+            returns = []
+            for r in reversed(rewards):
+                G = r + gamma * G
+                returns.insert(0, G)
+
+            log_probs_batch.extend(log_probs)
+            returns_batch.extend(returns)
+            episode_rewards.append(sum(rewards))
+
+        loss = agent.update(log_probs_batch, returns_batch)
+        avg_reward = sum(episode_rewards) / batch_size
+        print(f"Step {step:3d} | Avg Reward: {avg_reward:8.2f} | Loss: {loss:.4f}")
+
+    env.close()
+    return agent
+
+
+# ---------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------
+
+def play(agent: VPGAgent, env_name: str = "CartPole-v1"):
+    env = gym.make(env_name, render_mode="human")
+    obs, _ = env.reset()
+    done = False
+    while not done:
+        action, _ = agent.select_action(obs)
+        obs, _, terminated, truncated, _ = env.step(action)
+        done = terminated or truncated
+    env.close()
+
+
+def record(agent: VPGAgent, env_name: str = "CartPole-v1", video_folder: str = "./agent_video"):
+    env = gym.make(env_name, render_mode="rgb_array")
+    env = RecordVideo(env, video_folder=video_folder)
+    obs, _ = env.reset()
+    done = False
+    while not done:
+        action, _ = agent.select_action(obs)
+        obs, _, terminated, truncated, _ = env.step(action)
+        done = terminated or truncated
+    env.close()
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    agent = train(env_name="CartPole-v1", steps=30, batch_size=32)
+    agent.save("vpg_cartpole.pt")
+    play(agent, env_name="CartPole-v1")
