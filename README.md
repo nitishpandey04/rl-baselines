@@ -6,7 +6,8 @@ Baseline implementations of popular RL algorithms in PyTorch.
 | Algorithm | Type | Action Space | Default Env |
 |-----------|------|--------------|-------------|
 | [VPG](vpg/vpg.py) (REINFORCE) | On-policy, policy gradient | Discrete | CartPole-v1 |
-| [DQN](dqn/dqn.py) | Off-policy, value-based | Discrete | — |
+| [DQN](dqn/dqn.py) | Off-policy, value-based | Discrete | CartPole-v1 |
+| [Double DQN](ddqn/ddqn.py) | Off-policy, value-based | Discrete | CartPole-v1 |
 | [DDPG](ddpg/ddpg.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
 
 ## Installation and setup
@@ -39,3 +40,4 @@ visualize(agent)
 - [Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/index.html)
 - [Policy Gradient Algorithms — Lilian Weng](https://lilianweng.github.io/posts/2018-04-08-policy-gradient/)
 - Lillicrap et al., [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971) (DDPG, 2015)
+- van Hasselt et al., [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461) (Double DQN, 2015)
