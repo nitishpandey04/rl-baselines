@@ -7,6 +7,7 @@ Baseline implementations of popular RL algorithms in PyTorch.
 |-----------|------|--------------|-------------|
 | [VPG](vpg/vpg.py) (REINFORCE) | On-policy, policy gradient | Discrete | CartPole-v1 |
 | [A2C](a2c/a2c.py) | On-policy, actor-critic | Discrete | CartPole-v1 |
+| [PPO](ppo/ppo.py) | On-policy, actor-critic | Discrete | CartPole-v1 |
 | [DQN](dqn/dqn.py) | Off-policy, value-based | Discrete | CartPole-v1 |
 | [Double DQN](ddqn/ddqn.py) | Off-policy, value-based | Discrete | CartPole-v1 |
 | [DDPG](ddpg/ddpg.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
@@ -45,3 +46,4 @@ visualize(agent)
 - van Hasselt et al., [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461) (Double DQN, 2015)
 - Fujimoto et al., [Addressing Function Approximation Error in Actor-Critic Methods](https://arxiv.org/abs/1802.09477) (TD3, 2018)
 - Mnih et al., [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783) (A3C/A2C, 2016)
+- Schulman et al., [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347) (PPO, 2017)
