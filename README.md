@@ -12,6 +12,7 @@ Baseline implementations of popular RL algorithms in PyTorch.
 | [Double DQN](ddqn/ddqn.py) | Off-policy, value-based | Discrete | CartPole-v1 |
 | [DDPG](ddpg/ddpg.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
 | [TD3](td3/td3.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
+| [SAC](sac/sac.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
 
 ## Installation and setup
 This repo uses `uv`. Clone the repo and run:
@@ -47,3 +48,4 @@ visualize(agent)
 - Fujimoto et al., [Addressing Function Approximation Error in Actor-Critic Methods](https://arxiv.org/abs/1802.09477) (TD3, 2018)
 - Mnih et al., [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783) (A3C/A2C, 2016)
 - Schulman et al., [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347) (PPO, 2017)
+- Haarnoja et al., [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290) (SAC, 2018)
