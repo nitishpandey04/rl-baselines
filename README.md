@@ -9,6 +9,7 @@ Baseline implementations of popular RL algorithms in PyTorch.
 | [DQN](dqn/dqn.py) | Off-policy, value-based | Discrete | CartPole-v1 |
 | [Double DQN](ddqn/ddqn.py) | Off-policy, value-based | Discrete | CartPole-v1 |
 | [DDPG](ddpg/ddpg.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
+| [TD3](td3/td3.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
 
 ## Installation and setup
 This repo uses `uv`. Clone the repo and run:
@@ -41,3 +42,4 @@ visualize(agent)
 - [Policy Gradient Algorithms — Lilian Weng](https://lilianweng.github.io/posts/2018-04-08-policy-gradient/)
 - Lillicrap et al., [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971) (DDPG, 2015)
 - van Hasselt et al., [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461) (Double DQN, 2015)
+- Fujimoto et al., [Addressing Function Approximation Error in Actor-Critic Methods](https://arxiv.org/abs/1802.09477) (TD3, 2018)
