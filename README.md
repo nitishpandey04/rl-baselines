@@ -1,20 +1,29 @@
 # rl-baselines
-Baseline implementations of popular RL algorithms in PyTorch.
+Baseline implementations of popular RL algorithms in PyTorch. Each algorithm is self-contained in its own folder with a detailed README.
 
 ## Algorithms
 
 | Algorithm | Type | Action Space | Default Env |
 |-----------|------|--------------|-------------|
-| [VPG](vpg/vpg.py) (REINFORCE) | On-policy, policy gradient | Discrete | CartPole-v1 |
-| [A2C](a2c/a2c.py) | On-policy, actor-critic | Discrete | CartPole-v1 |
-| [PPO](ppo/ppo.py) | On-policy, actor-critic | Discrete | CartPole-v1 |
-| [DQN](dqn/dqn.py) | Off-policy, value-based | Discrete | CartPole-v1 |
-| [Double DQN](ddqn/ddqn.py) | Off-policy, value-based | Discrete | CartPole-v1 |
-| [DDPG](ddpg/ddpg.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
-| [TD3](td3/td3.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
-| [SAC](sac/sac.py) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
+| [VPG](vpg/) (REINFORCE) | On-policy, policy gradient | Discrete | CartPole-v1 |
+| [A2C](a2c/) | On-policy, actor-critic | Discrete | CartPole-v1 |
+| [PPO](ppo/) | On-policy, actor-critic | Discrete | CartPole-v1 |
+| [DQN](dqn/) | Off-policy, value-based | Discrete | CartPole-v1 |
+| [Double DQN](ddqn/) | Off-policy, value-based | Discrete | CartPole-v1 |
+| [DDPG](ddpg/) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
+| [TD3](td3/) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
+| [SAC](sac/) | Off-policy, actor-critic | Continuous | Pendulum-v1 |
 
-## Installation and setup
+## Which algorithm to use
+
+**Discrete action spaces** — start with DQN. Use Double DQN as a drop-in improvement. If you prefer policy-based methods, VPG → A2C → PPO is the natural progression with PPO being the most reliable.
+
+**Continuous action spaces** — SAC is the best default. TD3 is a solid alternative. DDPG is simpler but less stable; good for learning the actor-critic pattern before moving to TD3/SAC.
+
+**Just learning RL** — follow the progression: VPG → A2C → PPO on the policy gradient side, DQN → DDQN → DDPG → TD3 → SAC on the value/actor-critic side. Each algo's README explains what it adds over the previous one.
+
+## Installation
+
 This repo uses `uv`. Clone the repo and run:
 
 ```bash
@@ -23,29 +32,15 @@ uv sync
 
 ## Usage
 
-**VPG (REINFORCE)**
+All algorithms follow the same interface:
+
 ```python
-from vpg.vpg import ReinforceTrainer
+from <algo>.<algo> import train, play
 
-trainer = ReinforceTrainer(env_id="CartPole-v1")
-trainer.train()
-trainer.play()
-```
-
-**DDPG**
-```python
-from ddpg.ddpg import train, visualize
-
-agent, rewards = train(env_name="Pendulum-v1", max_episodes=200)
-visualize(agent)
+agent = train(env_name="CartPole-v1")
+play(agent, env_name="CartPole-v1")
 ```
 
 ## References
 - [Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/index.html)
 - [Policy Gradient Algorithms — Lilian Weng](https://lilianweng.github.io/posts/2018-04-08-policy-gradient/)
-- Lillicrap et al., [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971) (DDPG, 2015)
-- van Hasselt et al., [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461) (Double DQN, 2015)
-- Fujimoto et al., [Addressing Function Approximation Error in Actor-Critic Methods](https://arxiv.org/abs/1802.09477) (TD3, 2018)
-- Mnih et al., [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783) (A3C/A2C, 2016)
-- Schulman et al., [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347) (PPO, 2017)
-- Haarnoja et al., [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290) (SAC, 2018)
